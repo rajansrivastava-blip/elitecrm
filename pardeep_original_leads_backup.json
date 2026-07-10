@@ -1,0 +1,163 @@
+{
+  "backupTimestamp": "2026-06-13T05:41:10.685Z",
+  "editorName": "Pardeep Sharma",
+  "originalEdits": [
+    {
+      "leadId": "lead-bulk-26-22d8",
+      "leadName": "MR. JADEJA",
+      "originalStatus": "Call Back",
+      "originalNotes": "call not connect \nNeed to call later (Profile is good)",
+      "position": "JADEJA CONSTRUCTION Profile",
+      "timestamp": "Jun 12, 2026, 9:29:25 AM UTC",
+      "currentAssignee": "Karan Rana",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-27-3cw0",
+      "leadName": "Darshika sharma",
+      "originalStatus": "Follow Up",
+      "originalNotes": "magnolias nhi lena abhi bhot over price hai , kuch investment ka plan hai , i suggest westin 103 , apne husband se baat krk ek din gurgaon ane ka plan krenge madam",
+      "timestamp": "Jun 12, 2026, 9:48:59 AM UTC",
+      "currentAssignee": "Chirag Mehta",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-28-rsfo",
+      "leadName": "NAVEEN UPADHYAY",
+      "originalStatus": "Call Back",
+      "originalNotes": "need to call later abhi busy hai (good profile)",
+      "timestamp": "Jun 12, 2026, 9:54:14 AM UTC",
+      "currentAssignee": "Karan Rana",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-29-az8g",
+      "leadName": "Dhrubajyoti Hazarika",
+      "originalStatus": "Call Back",
+      "originalNotes": "need to call later call cut , whtsap message send ",
+      "timestamp": "Jun 12, 2026, 10:10:23 AM UTC",
+      "currentAssignee": "Sourav Tulli",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    }
+  ],
+  "currentlyAssigned": [
+    {
+      "leadId": "lead-bulk-47-knxv",
+      "leadName": "Abhishek Jain",
+      "currentStatus": "New Lead",
+      "currentNotes": null,
+      "projectName": "emaar ibc"
+    },
+    {
+      "leadId": "lead-bulk-46-jzni",
+      "leadName": "Aashish Ahuja",
+      "currentStatus": "New Lead",
+      "currentNotes": null,
+      "projectName": "Westin"
+    }
+  ],
+  "otherHistoricConnections": [
+    {
+      "leadId": "lead-bulk-23-1or0",
+      "leadName": "Swarnab Kashyap",
+      "currentAgent": "Chirag Mehta",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-24-dt4h",
+      "leadName": "Ashutosh",
+      "currentAgent": "Sahil Arora",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-30-fsj2",
+      "leadName": "Kavita",
+      "currentAgent": "Sahil Arora",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-21-om0j",
+      "leadName": "Arman jaan khan",
+      "currentAgent": "Sourav Tulli",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-12-hx8a",
+      "leadName": "ranjeet kumar",
+      "currentAgent": "Vishal Laller/Yuvansh Kapoor",
+      "currentStatus": "Not Interested",
+      "currentNotes": "wrong query."
+    },
+    {
+      "leadId": "lead-bulk-13-tq5v",
+      "leadName": "Devinder Diwan",
+      "currentAgent": "Vishal Laller/Yuvansh Kapoor",
+      "currentStatus": "Follow Up",
+      "currentNotes": "multipls sco discussion done."
+    },
+    {
+      "leadId": "lead-bulk-38-ufdk",
+      "leadName": "Bijay Prakash",
+      "currentAgent": "Vishal Laller/Yuvansh Kapoor",
+      "currentStatus": "Not Interested",
+      "currentNotes": "Time waste query"
+    },
+    {
+      "leadId": "lead-bulk-51-zydz",
+      "leadName": "Kashish Sanduja",
+      "currentAgent": "Pratibha Pawa",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-50-ailx",
+      "leadName": "PRASANN MITTAL",
+      "currentAgent": "Sahil Arora",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-49-b7oj",
+      "leadName": "Er Vijay Yadav",
+      "currentAgent": "Sahil Arora",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-36-ehci",
+      "leadName": "Er Dharmendra Rao",
+      "currentAgent": "Chirag Mehta",
+      "currentStatus": "New Lead",
+      "currentNotes": null
+    },
+    {
+      "leadId": "lead-bulk-55-n5cf",
+      "leadName": "Harshvardhan Talwar",
+      "currentAgent": "Sanjeev Mehta / Haarish Khan",
+      "currentStatus": "Not Interested",
+      "currentNotes": "nahi nahi nahi"
+    },
+    {
+      "leadId": "lead-bulk-57-d57y",
+      "leadName": "Prince_9hotwani",
+      "currentAgent": "Sanjeev Mehta / Haarish Khan",
+      "currentStatus": "Not Pick",
+      "currentNotes": "cut the call"
+    },
+    {
+      "leadId": "lead-bulk-37-yf5i",
+      "leadName": "Pradeep Malik",
+      "currentAgent": "Vishal Laller/Yuvansh Kapoor",
+      "currentStatus": "Follow Up",
+      "currentNotes": "broker ha apne client ke liye dekh raha hai"
+    }
+  ]
+}

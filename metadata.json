@@ -1,0 +1,8 @@
+{
+  "name": "Elite Pro CRM",
+  "description": "Premium customer relationship management system for Elite Pro, with AI email copy generation, executive stakeholder reporting, appointment calendars, and field companion mode.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
