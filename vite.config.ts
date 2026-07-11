@@ -16,7 +16,7 @@ export default defineConfig(() => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/settings.json', '**/crm_data_cache.json', '**/meta_leads_cache.json'] },
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };
 });

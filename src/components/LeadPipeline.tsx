@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Lead, CommunicationLog, User, LeadEditLog, Appointment, AppointmentType } from "../types";
-import AddLeadModal from "./AddLeadModal";
 import * as XLSX from "xlsx";
 import { 
   Search, 
@@ -862,13 +861,31 @@ export default function LeadPipeline({
   const [emailNotes, setEmailNotes] = useState("");
   const [emailSuccessMsg, setEmailSuccessMsg] = useState("");
 
-  // Validation error state for Edit Lead Form only
+  // Validation error state for Add/Edit Lead Forms
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Clear edit form errors whenever edit modal transitions
+  // Clear form errors whenever modals transition
   useEffect(() => {
     setFormError(null);
-  }, [editingLead]);
+  }, [isAddModalOpen, editingLead]);
+
+  // New Lead form state
+  const [newLeadForm, setNewLeadForm] = useState(() => ({
+    name: "",
+    company: "",
+    position: "",
+    email: "",
+    phone: "",
+    status: "New Lead" as any,
+    source: "Website" as Lead["source"],
+    temperature: "" as any,
+    budget: "",
+    notes: "",
+    location: "" as any,
+    assignedAgent: currentUser?.role === "sales_team" ? currentUser.name : "Pending Assignment",
+    score: 75,
+    projectName: ""
+  }));
 
   const presetAgents = [
     "Rajan Srivastava",
@@ -1056,9 +1073,43 @@ export default function LeadPipeline({
     users
   ]);
 
-  // Handle addition — receives validated lead data from AddLeadModal
-  const handleAddNewLead = (leadData: Omit<Lead, "id" | "dateCreated" | "lastUpdated">) => {
-    onAddLead(leadData as any);
+  // Handle addition
+  const handleAddNewLead = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalName = newLeadForm.name.trim();
+    const finalPhone = newLeadForm.phone.trim();
+    if (!finalName && !finalPhone) {
+      setFormError("Minimum identifying criteria required: Please provide either a Customer Name or a Phone Number to register the lead.");
+      return;
+    }
+    setFormError(null);
+    onAddLead({
+      ...newLeadForm,
+      name: finalName || `Lead (${finalPhone})`,
+      phone: finalPhone,
+      status: newLeadForm.status || "",
+      temperature: newLeadForm.temperature || "",
+      location: newLeadForm.location || "",
+      budget: newLeadForm.budget || "",
+      lastCommunication: new Date().toISOString().split("T")[0]
+    });
+    // Reset
+    setNewLeadForm({
+      name: "",
+      company: "",
+      position: "",
+      email: "",
+      phone: "",
+      status: "New Lead" as any,
+      source: "Website",
+      temperature: "" as any,
+      budget: "",
+      notes: "",
+      location: "" as any,
+      assignedAgent: currentUser?.role === "sales_team" ? currentUser.name : "Pending Assignment",
+      score: 75,
+      projectName: ""
+    });
     setIsAddModalOpen(false);
   };
 
@@ -2602,17 +2653,288 @@ export default function LeadPipeline({
         </div>
       )}
 
-      {/* MODAL: Add Lead — extracted to AddLeadModal for isolated re-renders on typing */}
-      <AddLeadModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmit={handleAddNewLead}
-        darkMode={darkMode}
-        currentUser={currentUser}
-        finalAgents={finalAgents}
-        isDuplicatePhone={isDuplicatePhone}
-        isAuthorizedToAssign={isAuthorizedToAssign}
-      />
+      {/* MODAL: Add Lead */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all">
+          <div 
+            id="add-lead-modal"
+            className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl relative
+              ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+          >
+            <button 
+              onClick={() => setIsAddModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-450 dark:hover:text-white hover:text-slate-800 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="font-display font-bold text-lg border-b border-slate-100/10 pb-3 mb-4">Register Capital Investor Lead</h3>
+
+            {formError && (
+              <div id="form-validation-error-add" className="mb-4 p-3 rounded-xl border border-rose-500/25 bg-rose-500/10 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+                <AlertCircle size={14} className="shrink-0 text-rose-500" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddNewLead} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+                    Customer Name <span className="text-teal-400 text-[9px] font-sans font-normal">(Compulsory if no Phone)</span>
+                  </label>
+                  <input
+                    id="new-lead-name"
+                    type="text"
+                    placeholder="Enter customer name"
+                    value={newLeadForm.name}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, name: e.target.value })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border 
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Project Name</label>
+                  <input
+                    id="new-lead-project"
+                    type="text"
+                    placeholder="Enter project name (e.g. EMAAR IBC)"
+                    value={newLeadForm.projectName || ""}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, projectName: e.target.value })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border 
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Email Address</label>
+                  <input
+                    id="new-lead-email"
+                    type="email"
+                    placeholder="name@corporation.com"
+                    value={newLeadForm.email}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border 
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+                    Phone Number <span className="text-teal-400 text-[9px] font-sans font-normal">(Compulsory if no Name)</span>
+                  </label>
+                  <input
+                    id="new-lead-phone"
+                    type="text"
+                    placeholder="e.g. +91 99999 99999"
+                    value={newLeadForm.phone}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-teal-500
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}
+                      ${isDuplicatePhone(newLeadForm.phone) ? "border-amber-500/55 text-amber-300 bg-amber-500/5 focus:ring-amber-500" : ""}`}
+                  />
+                  {isDuplicatePhone(newLeadForm.phone) && (
+                    <p className="text-[10px] text-amber-500 mt-1 flex items-center gap-1 font-sans font-medium">
+                      <AlertCircle size={11} className="shrink-0 text-amber-500" />
+                      Number already registered in CRM.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Lead Source</label>
+                  <select
+                    id="new-lead-source"
+                    value={newLeadForm.source}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, source: e.target.value as Lead["source"] })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border cursor-pointer
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  >
+                    <option value="Meta Ad">Meta Ad</option>
+                    <option value="Google Ad">Google Ad</option>
+                    <option value="IVR Board">IVR Board</option>
+                    <option value="IVR">IVR</option>
+                    <option value="Reference">Reference</option>
+                    <option value="Website">Website</option>
+                    <option value="Social Media">Social Media</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Cold Call">Cold Call</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Physical Location</label>
+                  <input
+                    id="new-lead-location"
+                    type="text"
+                    placeholder="e.g. Noida Sector 62, India (Optional)"
+                    value={newLeadForm.location}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, location: e.target.value })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border 
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Lead Status</label>
+                  <select
+                    id="new-lead-status"
+                    value={newLeadForm.status}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, status: e.target.value as Lead["status"] })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border cursor-pointer
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  >
+                    <option value="">(Select Status)</option>
+                    <option value="New Lead">New Lead</option>
+                    <option value="Interested">Interested</option>
+                    <option value="Follow Up">Follow Up</option>
+                    <option value="Detailed Share">Detailed Share</option>
+                    <option value="Not Interested">Not Interested</option>
+                    <option value="Meeting Done">Meeting Done</option>
+                    <option value="Site Visit">Site Visit</option>
+                    <option value="Closed Client">Closed Client</option>
+                    <option value="Call Back">Call Back</option>
+                    <option value="Junk">Junk</option>
+                    <option value="Duplicate">Duplicate</option>
+                    <option value="Not Pick">Not Pick</option>
+                    <option value="Switched Off">Switched Off</option>
+                    <option value="Low Budget">Low Budget</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Lead Priority</label>
+                  <select
+                    id="new-lead-temperature"
+                    value={newLeadForm.temperature}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, temperature: e.target.value as Lead["temperature"] })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border cursor-pointer
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  >
+                    <option value="">(Select Priority)</option>
+                    <option value="Hot">🔥 Hot</option>
+                    <option value="Warm">☀️ Warm</option>
+                    <option value="Cold">❄️ Cold</option>
+                    <option value="Dead">🫙 Dead</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Budget</label>
+                  <input
+                    id="new-lead-budget"
+                    type="text"
+                    placeholder="e.g. ₹15.0 Cr (Optional)"
+                    value={newLeadForm.budget}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, budget: e.target.value })}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border 
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">Assign To (Agent)</label>
+                  {!isAuthorizedToAssign && (
+                    <span className="text-[9px] text-rose-450 flex items-center gap-1 font-mono uppercase">
+                      <Lock size={10} /> Locked
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    id="new-lead-agent"
+                    type="text"
+                    placeholder="Select or type agent name..."
+                    value={newLeadForm.assignedAgent}
+                    onChange={(e) => {
+                      if (isAuthorizedToAssign) {
+                        setNewLeadForm({ ...newLeadForm, assignedAgent: e.target.value });
+                      }
+                    }}
+                    disabled={!isAuthorizedToAssign}
+                    className={`w-full pr-10 px-3 py-2 text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-teal-500
+                      ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}
+                      ${!isAuthorizedToAssign ? "opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-900" : ""}`}
+                  />
+                  {isAuthorizedToAssign && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewAgentDropdown(!showNewAgentDropdown)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 dark:hover:text-slate-300 hover:text-slate-600 pointer-events-auto"
+                    >
+                      <ChevronDown size={14} className={`transform transition-transform ${showNewAgentDropdown ? "rotate-180" : ""}`} />
+                    </button>
+                  )}
+                  {showNewAgentDropdown && isAuthorizedToAssign && (
+                    <div className={`absolute z-30 w-full mt-1 max-h-40 overflow-y-auto rounded-lg shadow-xl border text-xs divide-y
+                      ${darkMode ? "bg-slate-900 border-slate-800 text-slate-200 divide-slate-800/50" : "bg-white border-slate-200 text-slate-800 divide-slate-100"}`}>
+                      {finalAgents.map((agent) => (
+                        <button
+                          key={agent}
+                          type="button"
+                          onClick={() => {
+                            setNewLeadForm({ ...newLeadForm, assignedAgent: agent });
+                            setShowNewAgentDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left transition select-none ${darkMode ? "hover:bg-slate-800" : "hover:bg-slate-100"}`}
+                        >
+                          {agent}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {!isAuthorizedToAssign && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Only administrators and team leaders can assign or change lead ownership.
+                  </p>
+                )}
+              </div>
+
+               <div>
+                 <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Notes (Consultation Synopsis Brief)</label>
+                 <textarea
+                   id="new-lead-notes"
+                   rows={3}
+                   value={newLeadForm.notes}
+                   onChange={(e) => setNewLeadForm({ ...newLeadForm, notes: e.target.value })}
+                   placeholder="Record essential client demands and notes here..."
+                   className={`w-full px-3 py-2 text-xs rounded-lg border 
+                     ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200"}`}
+                 />
+               </div>
+
+              <div className="flex gap-2.5 justify-end pt-3 border-t border-slate-100/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold border cursor-pointer
+                    ${darkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-white" : "bg-slate-100 hover:bg-slate-150 border-slate-205"}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-500 text-white cursor-pointer"
+                >
+                  Register Lead Account
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Edit Lead */}
       {editingLead && (
