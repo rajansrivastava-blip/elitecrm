@@ -36,14 +36,14 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: mkdir -p ~/public_html/dist
+          script: mkdir -p ~/domains/eliteproinfracrm.in/public_html/dist
 
       - name: Upload dist to server via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
           switches: -avzr --delete
           path: dist/
-          remote_path: ~/public_html/dist/
+          remote_path: ~/domains/eliteproinfracrm.in/public_html/dist/
           remote_host: ${{ secrets.SSH_HOST }}
           remote_port: ${{ secrets.SSH_PORT }}
           remote_user: ${{ secrets.SSH_USERNAME }}
@@ -54,7 +54,7 @@ jobs:
         with:
           switches: -avzr
           path: package.json package-lock.json
-          remote_path: ~/public_html/
+          remote_path: ~/domains/eliteproinfracrm.in/public_html/
           remote_host: ${{ secrets.SSH_HOST }}
           remote_port: ${{ secrets.SSH_PORT }}
           remote_user: ${{ secrets.SSH_USERNAME }}
@@ -69,12 +69,15 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             export PATH=/opt/alt/alt-nodejs22/root/usr/bin:$PATH
-            cd ~/public_html
+            DROOT=~/domains/eliteproinfracrm.in/public_html
+            cd $DROOT
             npm ci --omit=dev
-            # Ensure Apache proxy to Node.js is in place
-            if [ ! -f .htaccess ]; then
-              printf 'DirectoryIndex disabled\n\nRewriteEngine On\nRewriteRule ^(.*)$ http://localhost:3000/$1 [P,L]\n' > .htaccess
-            fi
-            mkdir -p tmp
-            touch tmp/restart.txt
+            # Copy frontend files flat so LiteSpeed serves them directly
+            cp dist/index.html index.html
+            cp -r dist/assets/. assets/
+            # Restart Node.js (kills old process, starts new one for API routes)
+            pkill -f 'server.cjs' 2>/dev/null || true
+            sleep 1
+            export $(grep -v '^#' .env | xargs)
+            nohup node dist/server.cjs > $DROOT/app.log 2>&1 &
             echo "Deployment complete at $(date)"
