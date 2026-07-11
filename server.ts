@@ -6,6 +6,7 @@ import { execSync } from "child_process";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 dotenv.config();
 
@@ -36,6 +37,9 @@ const supabase = createClient(formattedUrl, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: false,
     detectSessionInUrl: false
+  },
+  realtime: {
+    transport: ws
   }
 });
 
@@ -71,12 +75,33 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
+// Module-level settings path and in-memory cache (avoids repeated disk reads)
+const settingsPath = path.join(process.cwd(), "settings.json");
+let _settingsCache: Record<string, any> | null = null;
+const SETTINGS_DEFAULTS = {
+  sheetUrl: "", sheetRange: "Sheet1", autoSheetsSync: false, lastSheetsSynced: "Never",
+  metaVerifyToken: "elite_pro_meta_verify_token_2026", metaAutoIngest: false, lastMetaSynced: "Never",
+  githubRepoUrl: "", githubToken: "", githubAutoSync: false
+};
+function getSettings(): Record<string, any> {
+  if (_settingsCache) return _settingsCache;
+  try {
+    if (fs.existsSync(settingsPath)) {
+      _settingsCache = { ...SETTINGS_DEFAULTS, ...JSON.parse(fs.readFileSync(settingsPath, "utf-8")) };
+    } else {
+      _settingsCache = { ...SETTINGS_DEFAULTS };
+    }
+  } catch {
+    _settingsCache = { ...SETTINGS_DEFAULTS };
+  }
+  return _settingsCache;
+}
+
 // Helper to automatically trigger Git push to GitHub repository if enabled in settings
 function triggerGitHubAutoSyncIfEnabled() {
-  const settingsPath = path.join(process.cwd(), "settings.json");
   if (!fs.existsSync(settingsPath)) return;
   try {
-    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    const settings = getSettings();
     if (settings.githubAutoSync && settings.githubRepoUrl && settings.githubToken) {
       console.log("[GitHub Auto-Sync] Triggering background push to GitHub...");
       
@@ -117,50 +142,16 @@ function triggerGitHubAutoSyncIfEnabled() {
 
 // Endpoint to load persistent configuration settings (e.g., Google Sheet URL)
 app.get("/api/settings", (req, res) => {
-  const settingsPath = path.join(process.cwd(), "settings.json");
-  try {
-    if (fs.existsSync(settingsPath)) {
-      const data = fs.readFileSync(settingsPath, "utf-8");
-      const parsed = JSON.parse(data);
-      return res.json({
-        sheetUrl: "",
-        sheetRange: "Sheet1",
-        autoSheetsSync: false,
-        lastSheetsSynced: "Never",
-        metaVerifyToken: "elite_pro_meta_verify_token_2026",
-        metaAutoIngest: false,
-        lastMetaSynced: "Never",
-        githubRepoUrl: "",
-        githubToken: "",
-        githubAutoSync: false,
-        ...parsed
-      });
-    }
-  } catch (err) {
-    console.error("Failed to read settings from path:", err);
-  }
-  // Return safe defaults
-  return res.json({
-    sheetUrl: "",
-    sheetRange: "Sheet1",
-    autoSheetsSync: false,
-    lastSheetsSynced: "Never",
-    metaVerifyToken: "elite_pro_meta_verify_token_2026",
-    metaAutoIngest: false,
-    lastMetaSynced: "Never",
-    githubRepoUrl: "",
-    githubToken: "",
-    githubAutoSync: false
-  });
+  return res.json(getSettings());
 });
 
 // Endpoint to save persistent configuration settings (e.g., Google Sheet URL)
 app.post("/api/settings", (req, res) => {
-  const settingsPath = path.join(process.cwd(), "settings.json");
   try {
     const config = req.body || {};
     fs.writeFileSync(settingsPath, JSON.stringify(config, null, 2), "utf-8");
-    
+    _settingsCache = { ...SETTINGS_DEFAULTS, ...config }; // Update in-memory cache
+
     // Trigger auto-sync if enabled
     triggerGitHubAutoSyncIfEnabled();
 
@@ -338,6 +329,18 @@ app.post("/api/auth/login", async (req, res) => {
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      // Fallback: validate against local crm_data_cache.json users
+      try {
+        if (fs.existsSync(crmDataPath)) {
+          const cacheData = JSON.parse(fs.readFileSync(crmDataPath, "utf-8"));
+          const localUser = (cacheData.users || []).find(
+            (u: any) => u.email?.toLowerCase() === email.toLowerCase() && u.password === password
+          );
+          if (localUser) {
+            return res.json({ user: localUser, session: null });
+          }
+        }
+      } catch (e) { console.error("[Auth Local Fallback Error]", e); }
       return res.status(error.status || 401).json({ error: error.message });
     }
     return res.json({ user: data.user, session: data.session });
@@ -407,16 +410,7 @@ app.get("/api/webhooks/meta-ads", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  let verifyToken = "elite_pro_meta_verify_token_2026";
-  const settingsPath = path.join(process.cwd(), "settings.json");
-  try {
-    if (fs.existsSync(settingsPath)) {
-      const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-      if (data.metaVerifyToken) {
-        verifyToken = data.metaVerifyToken.trim();
-      }
-    }
-  } catch (e) {}
+  const verifyToken = (getSettings().metaVerifyToken || "elite_pro_meta_verify_token_2026").trim();
 
   if (mode === "subscribe" && token === verifyToken) {
     console.log("[Meta Webhook] Verification successful!");
@@ -541,12 +535,9 @@ app.post("/api/webhooks/meta-ads", async (req, res) => {
 
     // 3. Update sync timestamps in configuration
     try {
-      const settingsPath = path.join(process.cwd(), "settings.json");
-      if (fs.existsSync(settingsPath)) {
-        const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-        data.lastMetaSynced = new Date().toLocaleTimeString("en-US", { hour12: true }) + " (Local)";
-        fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), "utf-8");
-      }
+      const updatedSettings = { ...getSettings(), lastMetaSynced: new Date().toLocaleTimeString("en-US", { hour12: true }) + " (Local)" };
+      fs.writeFileSync(settingsPath, JSON.stringify(updatedSettings, null, 2), "utf-8");
+      _settingsCache = updatedSettings;
     } catch (e) {}
 
     return res.json({
@@ -591,14 +582,18 @@ app.get("/api/db/status", async (req, res) => {
       return !error || (error.code !== "42P01" && error.code !== "P0001");
     };
 
+    const [usersOk, leadsOk, apptOk, logsOk, editLogsOk] = isConn
+      ? await Promise.all([
+          checkTable("users"), checkTable("leads"), checkTable("appointments"),
+          checkTable("communication_logs"), checkTable("lead_edit_logs")
+        ])
+      : [false, false, false, false, false];
+
     const status = {
       isConnected: isConn,
       tablesVerified: {
-        users: isConn ? await checkTable("users") : false,
-        leads: isConn ? await checkTable("leads") : false,
-        appointments: isConn ? await checkTable("appointments") : false,
-        communication_logs: isConn ? await checkTable("communication_logs") : false,
-        lead_edit_logs: isConn ? await checkTable("lead_edit_logs") : false,
+        users: usersOk, leads: leadsOk, appointments: apptOk,
+        communication_logs: logsOk, lead_edit_logs: editLogsOk,
       },
       error: testErr ? `${testErr.message} (code: ${testErr.code || "N/A"})` : undefined
     };

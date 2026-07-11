@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { INITIAL_LEADS, INITIAL_APPOINTMENTS, INITIAL_COMMUNICATION_LOGS, SALES_METRICS_HISTORY, PRESET_USERS } from "./data";
 import { Lead, Appointment, CommunicationLog, User, UserRole, LeadEditLog, AppNotification } from "./types";
 import Sidebar from "./components/Sidebar";
-import PerformanceDashboard from "./components/PerformanceDashboard";
 import LeadPipeline from "./components/LeadPipeline";
 import AppointmentsList from "./components/AppointmentsList";
-import StakeholderReports from "./components/StakeholderReports";
-import SystemSync from "./components/SystemSync";
-import MobileCompanion from "./components/MobileCompanion";
 import LoginPortal from "./components/LoginPortal";
-import UserManagement from "./components/UserManagement";
 import NotificationCenter from "./components/NotificationCenter";
+
+// Lazy-load heavy tab components to reduce initial bundle size
+const PerformanceDashboard = lazy(() => import("./components/PerformanceDashboard"));
+const StakeholderReports = lazy(() => import("./components/StakeholderReports"));
+const SystemSync = lazy(() => import("./components/SystemSync"));
+const MobileCompanion = lazy(() => import("./components/MobileCompanion"));
+const UserManagement = lazy(() => import("./components/UserManagement"));
 
 import { 
   checkSupabaseStatus, 
@@ -576,7 +578,7 @@ export default function App() {
             console.error("Server cache sync error:", err);
           }
         });
-      }, 500); // 500ms debounce to prevent concurrent parallel requests and "Load failed" errors
+      }, 2000); // 2000ms debounce to prevent excessive writes during bulk operations
       return () => {
         clearTimeout(timer);
         controller.abort();
@@ -1376,8 +1378,8 @@ export default function App() {
       }
     };
 
-    // run sync every 15 seconds for snappier real-time experience
-    const intervalId = setInterval(runMetaBackgroundSync, 15000);
+    // run sync every 60 seconds (reduced from 15s to ease API load)
+    const intervalId = setInterval(runMetaBackgroundSync, 60000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -1528,8 +1530,8 @@ export default function App() {
       }
     };
 
-    // run sync regularly every 5 seconds for a snappy real-time experience
-    const intervalId = setInterval(runSupabaseRealtimeSync, 5000);
+    // run sync every 30 seconds (reduced from 5s to ease server/API load)
+    const intervalId = setInterval(runSupabaseRealtimeSync, 30000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -2637,7 +2639,9 @@ export default function App() {
 
           {/* Active Tab Sub-view render */}
           <div id="tab-window-content-carrier" className="pb-16 animate-fade-in">
-            {renderTabContent()}
+            <Suspense fallback={<div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading...</div>}>
+              {renderTabContent()}
+            </Suspense>
           </div>
         </div>
 

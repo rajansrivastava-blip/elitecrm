@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Runtime data files (contain customer data & tokens — never commit)
+settings.json
+crm_data_cache.json
+meta_leads_cache.json
+*.backup.json
