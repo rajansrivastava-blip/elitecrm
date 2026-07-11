@@ -29,6 +29,15 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_META_VERIFY_TOKEN: ${{ secrets.VITE_META_VERIFY_TOKEN }}
 
+      - name: Create remote directories
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: mkdir -p ~/public_html/dist
+
       - name: Upload dist to server via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
