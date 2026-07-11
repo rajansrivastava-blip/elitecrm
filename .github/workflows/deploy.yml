@@ -68,8 +68,13 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            export PATH=/opt/alt/alt-nodejs22/root/usr/bin:$PATH
             cd ~/public_html
             npm ci --omit=dev
+            # Ensure Apache proxy to Node.js is in place
+            if [ ! -f .htaccess ]; then
+              printf 'DirectoryIndex disabled\n\nRewriteEngine On\nRewriteRule ^(.*)$ http://localhost:3000/$1 [P,L]\n' > .htaccess
+            fi
             mkdir -p tmp
             touch tmp/restart.txt
             echo "Deployment complete at $(date)"
