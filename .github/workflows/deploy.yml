@@ -76,9 +76,6 @@ jobs:
             cp dist/index.html index.html
             cp -r dist/assets/. assets/
             # Restart Node.js (kills old process, starts new one for API routes)
-            pkill -f 'server.cjs' 2>/dev/null || true
-            sleep 1
-            export $(grep -v '^#' .env | xargs)
-            nohup node dist/server.cjs > $DROOT/app.log 2>&1 &
-            disown $!
+            # Signal Passenger to restart the Node.js app
+            mkdir -p tmp && touch tmp/restart.txt
             echo "Deployment complete at $(date)"
