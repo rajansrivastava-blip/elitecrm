@@ -80,4 +80,5 @@ jobs:
             sleep 1
             export $(grep -v '^#' .env | xargs)
             nohup node dist/server.cjs > $DROOT/app.log 2>&1 &
+            disown $!
             echo "Deployment complete at $(date)"
