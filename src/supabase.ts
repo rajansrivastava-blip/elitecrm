@@ -158,22 +158,22 @@ export function mapLeadToDb(lead: Lead): any {
 
   return {
     id: lead.id,
-    name: lead.name,
+    name: lead.name || "Unnamed Lead",
     company: lead.company || null,
     position: lead.position || null,
-    email: lead.email,
-    phone: lead.phone,
-    source: lead.source,
-    status: lead.status,
-    temperature: lead.temperature,
+    email: lead.email || "",
+    phone: (lead.phone && String(lead.phone).trim()) ? String(lead.phone).trim() : "0000000000",
+    source: lead.source || "Website",
+    status: lead.status || "New Lead",
+    temperature: lead.temperature || "Warm",
     budget: lead.budget || null,
     location: lead.location || null,
-    assigned_agent: lead.assignedAgent,
+    assigned_agent: lead.assignedAgent || "Gautam",
     notes: lead.notes || null,
     project_name: lead.projectName || null,
-    date_created: lead.dateCreated,
-    date_updated: lead.dateUpdated,
-    last_communication: lead.lastCommunication,
+    date_created: lead.dateCreated || new Date().toISOString().split('T')[0],
+    date_updated: lead.dateUpdated || new Date().toISOString().split('T')[0],
+    last_communication: lead.lastCommunication || new Date().toISOString().split('T')[0],
     score: scoreVal,
     assignment_timestamp: parseNullableBigIntVal(lead.assignmentTimestamp),
     assigned_tl_id: lead.assignedTlId || null,
@@ -201,14 +201,14 @@ export function mapAppointmentToDb(app: Appointment): any {
   return {
     id: app.id,
     lead_id: app.leadId,
-    lead_name: app.leadName,
-    title: app.title,
-    date: app.date,
-    time: app.time,
-    type: app.type,
-    notes: app.notes,
-    is_completed: app.isCompleted,
-    reminder_active: app.reminderActive
+    lead_name: app.leadName || "Unknown",
+    title: app.title || "Meeting",
+    date: app.date || new Date().toISOString().split('T')[0],
+    time: app.time || "12:00",
+    type: app.type || "Call",
+    notes: app.notes || "",
+    is_completed: app.isCompleted === undefined ? false : !!app.isCompleted,
+    reminder_active: app.reminderActive === undefined ? false : !!app.reminderActive
   };
 }
 
@@ -227,10 +227,10 @@ export function mapCommunicationLogToDb(log: CommunicationLog): any {
   return {
     id: log.id,
     lead_id: log.leadId,
-    date: log.date,
-    type: log.type,
-    content: log.content,
-    sender: log.sender
+    date: log.date || new Date().toISOString(),
+    type: log.type || "Call",
+    content: log.content || "",
+    sender: log.sender || "System"
   };
 }
 
@@ -250,11 +250,11 @@ export function mapLeadEditLogToDb(log: LeadEditLog): any {
   return {
     id: log.id,
     lead_id: log.leadId,
-    lead_name: log.leadName,
-    editor_name: log.editorName,
-    editor_role: log.editorRole,
-    timestamp: log.timestamp,
-    changes: log.changes
+    lead_name: log.leadName || "Lead",
+    editor_name: log.editorName || "System",
+    editor_role: log.editorRole || "admin",
+    timestamp: log.timestamp || new Date().toISOString(),
+    changes: log.changes || []
   };
 }
 

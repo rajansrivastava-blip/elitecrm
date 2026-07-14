@@ -646,6 +646,65 @@ async function selectAllFromTable(supabaseClient: any, tableName: string, column
 async function resilientUpsert(tableName: string, payload: any): Promise<{ success: boolean; error?: any }> {
   let currentPayload = JSON.parse(JSON.stringify(payload));
   
+  const sanitizeLead = (lead: any) => {
+    if (!lead) return;
+    lead.name = lead.name || "Unnamed Lead";
+    lead.email = lead.email || "";
+    lead.phone = (lead.phone && String(lead.phone).trim()) ? String(lead.phone).trim() : "0000000000";
+    lead.source = lead.source || "Website";
+    lead.status = lead.status || "New Lead";
+    lead.temperature = lead.temperature || "Warm";
+    lead.assigned_agent = lead.assigned_agent || "Gautam";
+    lead.date_created = lead.date_created || new Date().toISOString().split('T')[0];
+    lead.date_updated = lead.date_updated || new Date().toISOString().split('T')[0];
+    lead.last_communication = lead.last_communication || new Date().toISOString().split('T')[0];
+  };
+
+  const sanitizeAppointment = (app: any) => {
+    if (!app) return;
+    app.lead_name = app.lead_name || "Unknown";
+    app.title = app.title || "Meeting";
+    app.date = app.date || new Date().toISOString().split('T')[0];
+    app.time = app.time || "12:00";
+    app.type = app.type || "Call";
+    app.notes = app.notes || "";
+    app.is_completed = app.is_completed === undefined ? false : !!app.is_completed;
+    app.reminder_active = app.reminder_active === undefined ? false : !!app.reminder_active;
+  };
+
+  const sanitizeCommunicationLog = (log: any) => {
+    if (!log) return;
+    log.date = log.date || new Date().toISOString();
+    log.type = log.type || "Call";
+    log.content = log.content || "";
+    log.sender = log.sender || "System";
+  };
+
+  const sanitizeLeadEditLog = (log: any) => {
+    if (!log) return;
+    log.lead_name = log.lead_name || "Lead";
+    log.editor_name = log.editor_name || "System";
+    log.editor_role = log.editor_role || "admin";
+    log.timestamp = log.timestamp || new Date().toISOString();
+    log.changes = log.changes || [];
+  };
+
+  if (currentPayload) {
+    if (tableName === "leads") {
+      if (Array.isArray(currentPayload)) currentPayload.forEach(sanitizeLead);
+      else sanitizeLead(currentPayload);
+    } else if (tableName === "appointments") {
+      if (Array.isArray(currentPayload)) currentPayload.forEach(sanitizeAppointment);
+      else sanitizeAppointment(currentPayload);
+    } else if (tableName === "communication_logs") {
+      if (Array.isArray(currentPayload)) currentPayload.forEach(sanitizeCommunicationLog);
+      else sanitizeCommunicationLog(currentPayload);
+    } else if (tableName === "lead_edit_logs") {
+      if (Array.isArray(currentPayload)) currentPayload.forEach(sanitizeLeadEditLog);
+      else sanitizeLeadEditLog(currentPayload);
+    }
+  }
+
   if (tableName === "leads" && currentPayload) {
     try {
       const existingDbLeads = await selectAllFromTable(supabase, "leads", "id, name, email, phone");
