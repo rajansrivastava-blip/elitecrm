@@ -622,23 +622,28 @@ async function selectAllFromTable(supabaseClient: any, tableName: string, column
   while (true) {
     const from = page * pageSize;
     const to = from + pageSize - 1;
+    console.log(`[server selectAllFromTable] Table "${tableName}": Fetching range ${from} to ${to} (page ${page})`);
     const { data, error } = await supabaseClient
       .from(tableName)
       .select(columns)
       .range(from, to);
     
     if (error) {
+      console.error(`[server selectAllFromTable] Table "${tableName}" error on page ${page}:`, error);
       throw error;
     }
     if (!data || data.length === 0) {
+      console.log(`[server selectAllFromTable] Table "${tableName}": Reached end of table at page ${page} (0 rows returned)`);
       break;
     }
     allRows.push(...data);
+    console.log(`[server selectAllFromTable] Table "${tableName}": Page ${page} returned ${data.length} rows. Cumulative count: ${allRows.length}`);
     if (data.length < pageSize) {
       break;
     }
     page++;
   }
+  console.log(`[server selectAllFromTable] Table "${tableName}": Fully loaded ${allRows.length} total rows.`);
   return allRows;
 }
 
