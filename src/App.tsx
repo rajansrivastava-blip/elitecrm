@@ -468,43 +468,59 @@ export default function App() {
     const res = await pullSupabaseData();
     setIsSupabaseOpInProgress(false);
 
-    let success = res.errors.length === 0;
-    if (success) {
-      if (res.leads) {
-        const uniquePulled: Lead[] = [];
-        res.leads.forEach(l => {
-          if (!isDuplicateLead(l, uniquePulled)) {
-            uniquePulled.push(l);
+    // Resilient Table-specific Syncing: We process each table independently based on individual extraction errors
+    const errors = res.errors || [];
+    const hasUsersError = errors.some(e => e.toLowerCase().includes("users"));
+    const hasLeadsError = errors.some(e => e.toLowerCase().includes("leads"));
+    const hasAppsError = errors.some(e => e.toLowerCase().includes("appointments"));
+    const hasCommsError = errors.some(e => e.toLowerCase().includes("comm"));
+    const hasEditsError = errors.some(e => e.toLowerCase().includes("edit"));
+
+    if (res.leads && !hasLeadsError) {
+      const uniquePulled: Lead[] = [];
+      res.leads.forEach(l => {
+        if (!isDuplicateLead(l, uniquePulled)) {
+          uniquePulled.push(l);
+        }
+      });
+      setLeads(uniquePulled);
+      localStorage.setItem("elite_pro_leads", JSON.stringify(uniquePulled));
+    }
+
+    if (res.users && !hasUsersError) {
+      setUsers(prev => {
+        const merged = [...res.users!];
+        prev.forEach(localUser => {
+          const matchedIdx = merged.findIndex(u => u.id === localUser.id || u.email.toLowerCase() === localUser.email.toLowerCase());
+          if (matchedIdx >= 0) {
+            if (!merged[matchedIdx].password && localUser.password) {
+              merged[matchedIdx].password = localUser.password;
+            }
+          } else {
+            merged.push(localUser);
           }
         });
-        setLeads(uniquePulled);
-      }
-      if (res.users) {
-        setUsers(prev => {
-          const merged = [...res.users!];
-          prev.forEach(localUser => {
-            const matchedIdx = merged.findIndex(u => u.id === localUser.id || u.email.toLowerCase() === localUser.email.toLowerCase());
-            if (matchedIdx >= 0) {
-              if (!merged[matchedIdx].password && localUser.password) {
-                merged[matchedIdx].password = localUser.password;
-              }
-            } else {
-              merged.push(localUser);
-            }
-          });
-          return merged;
-        });
-      }
-      if (res.appointments) {
-        setAppointments(res.appointments);
-      }
-      if (res.communicationLogs) {
-        setCommunicationLogs(res.communicationLogs);
-      }
-      if (res.leadEditLogs) {
-        setLeadEditLogs(res.leadEditLogs);
-      }
+        return merged;
+      });
+    }
 
+    if (res.appointments && !hasAppsError) {
+      setAppointments(res.appointments);
+      localStorage.setItem("elite_pro_appointments", JSON.stringify(res.appointments));
+    }
+
+    if (res.communicationLogs && !hasCommsError) {
+      setCommunicationLogs(res.communicationLogs);
+      localStorage.setItem("elite_pro_communication_logs", JSON.stringify(res.communicationLogs));
+    }
+
+    if (res.leadEditLogs && !hasEditsError) {
+      setLeadEditLogs(res.leadEditLogs);
+      localStorage.setItem("elite_pro_lead_edit_logs", JSON.stringify(res.leadEditLogs));
+    }
+
+    const success = !hasLeadsError;
+    if (success) {
       setSyncHistory(prev => [
         `${new Date().toISOString().replace("T", " ").substr(0, 19)} GMT - Pulled live data from Supabase backend tables.`,
         ...prev
@@ -513,7 +529,7 @@ export default function App() {
     
     return {
       success,
-      errors: res.errors
+      errors
     };
   };
 
@@ -676,13 +692,27 @@ export default function App() {
           // Even if some secondary tables or logs have errors (e.g. table cleared, or relation error),
           // we want to use whatever database rows are actually present in Supabase rather than falling back
           // to default mock records from crm_data_cache.json or crm presets.
-          const pulledLeads = res.leads || [];
-          const pulledUsers = res.users || [];
-          const pulledApps = res.appointments || [];
-          const pulledComms = res.communicationLogs || [];
-          const pulledEdits = res.leadEditLogs || [];
+          const errors = res.errors || [];
+          const hasLeadsError = errors.some(e => e.toLowerCase().includes("leads") || e.toLowerCase().includes("extract"));
+          const hasUsersError = errors.some(e => e.toLowerCase().includes("users"));
+          const hasAppsError = errors.some(e => e.toLowerCase().includes("appointments"));
+          const hasCommsError = errors.some(e => e.toLowerCase().includes("comm"));
+          const hasEditsError = errors.some(e => e.toLowerCase().includes("edit"));
 
-          setLeads(pulledLeads);
+          const pulledLeads = (res.leads && !hasLeadsError) ? res.leads : [];
+          const pulledUsers = (res.users && !hasUsersError) ? res.users : [];
+          const pulledApps = (res.appointments && !hasAppsError) ? res.appointments : [];
+          const pulledComms = (res.communicationLogs && !hasCommsError) ? res.communicationLogs : [];
+          const pulledEdits = (res.leadEditLogs && !hasEditsError) ? res.leadEditLogs : [];
+
+          if (res.leads && !hasLeadsError) {
+            setLeads(pulledLeads);
+          } else {
+            const savedLeads = localStorage.getItem("elite_pro_leads");
+            if (savedLeads) {
+              setLeads(JSON.parse(savedLeads));
+            }
+          }
           
           // Merge users safely to preserve mock session details or local password overrides
           setUsers(prev => {
@@ -703,26 +733,39 @@ export default function App() {
             return merged;
           });
 
-          setAppointments(pulledApps);
-          setCommunicationLogs(pulledComms);
-          setLeadEditLogs(pulledEdits);
+          if (res.appointments && !hasAppsError) {
+            setAppointments(pulledApps);
+            localStorage.setItem("elite_pro_appointments", JSON.stringify(pulledApps));
+          }
+          if (res.communicationLogs && !hasCommsError) {
+            setCommunicationLogs(pulledComms);
+            localStorage.setItem("elite_pro_communication_logs", JSON.stringify(pulledComms));
+          }
+          if (res.leadEditLogs && !hasEditsError) {
+            setLeadEditLogs(pulledEdits);
+            localStorage.setItem("elite_pro_lead_edit_logs", JSON.stringify(pulledEdits));
+          }
 
-          // Sync with local storage
-          localStorage.setItem("elite_pro_leads", JSON.stringify(pulledLeads));
-          localStorage.setItem("elite_pro_appointments", JSON.stringify(pulledApps));
-          localStorage.setItem("elite_pro_communication_logs", JSON.stringify(pulledComms));
-          localStorage.setItem("elite_pro_lead_edit_logs", JSON.stringify(pulledEdits));
+          if (res.leads && !hasLeadsError) {
+            localStorage.setItem("elite_pro_leads", JSON.stringify(pulledLeads));
+          }
 
           // Populate the server cache so it is immediately in sync with manual DB removals/clears
+          const currentLeadsCache = (res.leads && !hasLeadsError) ? pulledLeads : JSON.parse(localStorage.getItem("elite_pro_leads") || "[]");
+          const currentUsersCache = (res.users && !hasUsersError) ? pulledUsers : users;
+          const currentAppsCache = (res.appointments && !hasAppsError) ? pulledApps : JSON.parse(localStorage.getItem("elite_pro_appointments") || "[]");
+          const currentCommsCache = (res.communicationLogs && !hasCommsError) ? pulledComms : JSON.parse(localStorage.getItem("elite_pro_communication_logs") || "[]");
+          const currentEditsCache = (res.leadEditLogs && !hasEditsError) ? pulledEdits : JSON.parse(localStorage.getItem("elite_pro_lead_edit_logs") || "[]");
+
           await fetch("/api/crm/data", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              leads: pulledLeads,
-              users: pulledUsers,
-              appointments: pulledApps,
-              communicationLogs: pulledComms,
-              leadEditLogs: pulledEdits
+              leads: currentLeadsCache,
+              users: currentUsersCache,
+              appointments: currentAppsCache,
+              communicationLogs: currentCommsCache,
+              leadEditLogs: currentEditsCache
             })
           });
 
@@ -1455,15 +1498,15 @@ export default function App() {
       isFetching = true;
       try {
         const res = await pullSupabaseData();
-        if (res.errors && res.errors.length > 0) {
-          // If there is any connection error, log and return silently
-          console.warn("[Realtime Sync Warning]:", res.errors.join(", "));
-          isFetching = false;
-          return;
+        const errors = res.errors || [];
+        const hasLeadsError = errors.some(e => e.toLowerCase().includes("leads") || e.toLowerCase().includes("extract"));
+
+        if (hasLeadsError) {
+          console.warn("[Realtime Sync Warning]: Leads table pull failed, skipping leads sync for this cycle.", errors.join(", "));
         }
 
-        // Compare and update leads
-        if (res.leads) {
+        // Compare and update leads (only if no leads-specific error occurred)
+        if (res.leads && !hasLeadsError) {
           // Filter out duplicates just in case
           const uniquePulled: Lead[] = [];
           res.leads.forEach(l => {
