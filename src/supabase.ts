@@ -462,10 +462,11 @@ export async function pushLocalDataToSupabase(data: {
       console.warn("[pushLocalDataToSupabase] /api/db/push returned 404. Falling back to browser direct socket push.");
       return await pushLocalClientData(payload);
     }
-    const parsed = await res.json();
     if (!res.ok) {
+      const parsed = await res.json().catch(() => ({}));
       return { success: false, errors: [parsed.error || `Push operation query rejected (HTTP ${res.status}).`] };
     }
+    const parsed = await res.json();
     return { success: parsed.success, errors: parsed.errors || [] };
   } catch (err: any) {
     if (isKeySecret()) {

@@ -359,6 +359,7 @@ export default function App() {
     }
   });
   const [isSupabaseOpInProgress, setIsSupabaseOpInProgress] = useState<boolean>(false);
+  const [isSupabasePaused, setIsSupabasePaused] = useState<boolean>(false);
 
   // Supabase Auto Sync setting: Default to true for automatic real-time cloud database synchronization
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(() => {
@@ -407,6 +408,23 @@ export default function App() {
     try {
       const status = await checkSupabaseStatus();
       setSupabaseStatus(status);
+      
+      const isPaused = 
+        status.error?.includes("503") || 
+        status.error?.toLowerCase().includes("service unavailable") || 
+        status.error?.toLowerCase().includes("paused");
+        
+      if (isPaused) {
+        setIsSupabasePaused(true);
+      } else if (status.isConnected) {
+        if (isSupabasePaused) {
+          triggerAlert(
+            "Supabase Reconnected!",
+            "Fantastic! Handshake with your remote Supabase project fzsjeukjjjutiihhzjgu was successful. Your cloud database is back online!\n\nYou can now push your offline changes to sync everything up!"
+          );
+        }
+        setIsSupabasePaused(false);
+      }
       return status;
     } catch (e) {
       console.error("Supabase check error", e);
@@ -530,6 +548,34 @@ export default function App() {
   } | null>(null);
 
   const triggerAlert = (title: string, message: string) => {
+    const isPausedError = 
+      message.includes("503") || 
+      message.toLowerCase().includes("service unavailable") || 
+      message.toLowerCase().includes("paused") ||
+      message.includes("fzsjeukjjjutiihhzjgu");
+
+    if (isPausedError) {
+      setIsSupabasePaused(true);
+      
+      const notificationId = "notif-paused-" + Date.now();
+      const alreadyExists = notifications.some(n => n.title.includes("Database Paused"));
+      if (!alreadyExists) {
+        setNotifications(prev => [
+          {
+            id: notificationId,
+            recipientName: currentUser?.name || "System Administrator",
+            title: "Cloud Sync Paused (503)",
+            message: `Your remote Supabase project 'fzsjeukjjjutiihhzjgu' is paused due to inactivity. All CRM records are safely saved in local storage.`,
+            timestamp: new Date().toISOString(),
+            isRead: false,
+            type: "sync"
+          },
+          ...prev
+        ]);
+      }
+      return;
+    }
+
     setModalConfig({
       isOpen: true,
       title,
@@ -1170,9 +1216,18 @@ export default function App() {
       if (!dbRes.success) {
         const sampleErr = dbRes.error || "Missing schema table or blocked with RLS";
         console.warn("Supabase bulk registration failed:", sampleErr);
+        
+        let customMessage = `Successfully added ${uniqueNewLeads.length} leads to local browser state, but failed to write onto your remote Supabase database.\n\nDatabase Error: "${sampleErr}"\n\n`;
+        
+        if (sampleErr.includes("503") || sampleErr.toLowerCase().includes("service unavailable") || sampleErr.toLowerCase().includes("paused")) {
+          customMessage += `🚨 ROOT CAUSE DETECTED: It appears your Supabase project (fzsjeukjjjutiihhzjgu) has been PAUSED by Supabase due to inactivity. \n\nHow to fix:\n1. Log in to your Supabase Dashboard (https://supabase.com).\n2. Select your project "fzsjeukjjjutiihhzjgu".\n3. Click "Restore project" to reactivate your database.\n\nOnce restored, you can manual-push from the Integrations -> "System Sync" page, or let real-time auto-sync resume!`;
+        } else {
+          customMessage += `Please ensure your 'leads' and 'appointments' tables are properly configured under Supabase's SQL Editor schema (details located inside the Integrations "System Sync" page).`;
+        }
+        
         triggerAlert(
           "Supabase Bulk Sync Alert",
-          `Successfully added ${uniqueNewLeads.length} leads to local browser state, but failed to write onto your remote Supabase database.\n\nDatabase Error: "${sampleErr}"\n\nPlease ensure your 'leads' and 'appointments' tables are properly configured under Supabase's SQL Editor schema (details located inside the Integrations "System Sync" page).`
+          customMessage
         );
       }
     }
@@ -2483,6 +2538,49 @@ export default function App() {
         className="flex-1 md:ml-64 ml-0 min-h-screen flex flex-col justify-between overflow-y-auto px-4 md:px-8 py-6 relative"
       >
         <div>
+          {/* Pause Database Banner Alert */}
+          {isSupabasePaused && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              className="mb-6 p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-amber-500 text-xs flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between shadow-lg"
+            >
+              <div className="flex gap-3 items-start">
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 mt-0.5 sm:mt-0 flex items-center justify-center border border-amber-500/20">
+                  <AlertOctagon size={16} />
+                </span>
+                <div>
+                  <p className="font-bold text-sm leading-none">
+                    Cloud Sync Paused (Supabase Project Paused)
+                  </p>
+                  <p className={`text-xs mt-1.5 leading-relaxed ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    Your remote Supabase project <span className="font-mono text-amber-500 font-bold bg-amber-500/10 px-1 py-0.5 rounded">fzsjeukjjjutiihhzjgu</span> is temporarily paused. 
+                    All CRM data is <strong className="text-emerald-500 font-bold">100% saved locally</strong>. Please log in to your Supabase Dashboard to unpause it, then click "Verify Sync" to resume live sync.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0 justify-end">
+                <a
+                  href="https://supabase.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-[11px] hover:bg-amber-400 transition cursor-pointer select-none text-center block"
+                >
+                  Restore on Supabase
+                </a>
+                <button
+                  onClick={() => refreshSupabaseStatus()}
+                  className={`px-3 py-2 rounded-xl border text-[11px] font-semibold transition cursor-pointer text-center block
+                    ${darkMode 
+                      ? "border-slate-800 hover:bg-slate-900 text-slate-300" 
+                      : "border-slate-200 hover:bg-slate-100 text-slate-600 bg-white"}`}
+                >
+                  Verify Sync
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Top Navbar Header */}
           <header className={`flex justify-between items-center pb-5 border-b mb-6 ${darkMode ? "border-slate-850" : "border-slate-150"}`}>
             <div className="flex items-center gap-3 text-left">
@@ -2693,7 +2791,7 @@ export default function App() {
               <h3 className="font-display font-bold text-base leading-tight tracking-tight">
                 {modalConfig.title}
               </h3>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed whitespace-pre-wrap text-left">
                 {modalConfig.message}
               </p>
             </div>

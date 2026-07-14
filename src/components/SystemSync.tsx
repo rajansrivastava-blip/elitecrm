@@ -826,8 +826,12 @@ ALTER TABLE public.lead_edit_logs DISABLE ROW LEVEL SECURITY;`;
         type: "success"
       });
     } else {
+      const errorString = res.errors.join("; ");
+      const isPaused = errorString.includes("503") || errorString.toLowerCase().includes("service unavailable") || errorString.toLowerCase().includes("paused");
       setOpFeedback({
-        message: `Synchronization encountered errors: ${res.errors.join("; ")}. Standard RLS policies or unrun schemas may be restricting upserting.`,
+        message: isPaused 
+          ? "🚨 Synchronization failed because your remote Supabase database project is PAUSED due to inactivity. Please log in to your Supabase Dashboard (https://supabase.com), find project 'fzsjeukjjjutiihhzjgu', and click 'Restore project' to reactivate it."
+          : `Synchronization encountered errors: ${errorString}. Standard RLS policies or unrun schemas may be restricting upserting.`,
         type: "error"
       });
     }
@@ -842,8 +846,12 @@ ALTER TABLE public.lead_edit_logs DISABLE ROW LEVEL SECURITY;`;
         type: "success"
       });
     } else {
+      const errorString = res.errors.join("; ");
+      const isPaused = errorString.includes("503") || errorString.toLowerCase().includes("service unavailable") || errorString.toLowerCase().includes("paused");
       setOpFeedback({
-        message: `Fetch failed: ${res.errors.join("; ")}. Please verify that the tables are properly created and allow reads.`,
+        message: isPaused 
+          ? "🚨 Fetch failed because your remote Supabase database project is PAUSED due to inactivity. Please log in to your Supabase Dashboard (https://supabase.com), find project 'fzsjeukjjjutiihhzjgu', and click 'Restore project' to reactivate it."
+          : `Fetch failed: ${errorString}. Please verify that the tables are properly created and allow reads.`,
         type: "error"
       });
     }
@@ -1043,9 +1051,18 @@ ALTER TABLE public.lead_edit_logs DISABLE ROW LEVEL SECURITY;`;
               <div className="flex justify-between">
                 <span className="text-slate-400">Status Check API:</span>
                 <span className={`font-mono font-semibold truncate max-w-[170px] ${supabaseStatus.isConnected ? "text-emerald-500" : "text-amber-500"}`}>
-                  {supabaseStatus.isConnected ? "Handshake OK" : "Ping Unreachable"}
+                  {supabaseStatus.isConnected ? "Handshake OK" : 
+                    (supabaseStatus.error?.includes("503") || supabaseStatus.error?.toLowerCase().includes("service unavailable") || supabaseStatus.error?.toLowerCase().includes("paused")
+                      ? "Project Paused (503)" 
+                      : "Ping Unreachable")}
                 </span>
               </div>
+              
+              {(!supabaseStatus.isConnected && (supabaseStatus.error?.includes("503") || supabaseStatus.error?.toLowerCase().includes("service unavailable") || supabaseStatus.error?.toLowerCase().includes("paused"))) && (
+                <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-450 text-[10.5px] leading-relaxed">
+                  ⚠️ <strong>Supabase project paused:</strong> The remote database (fzsjeukjjjutiihhzjgu) has been suspended due to inactivity. Please log in to your <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-amber-300">Supabase Dashboard</a> and click "Restore project" to re-enable it.
+                </div>
+              )}
               
               {/* Tables checklist */}
               <div className="mt-2 border-t border-slate-800/20 pt-2 space-y-1.5">
